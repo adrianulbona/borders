@@ -4,7 +4,8 @@ import java.io.File
 import java.lang.System.currentTimeMillis
 
 import ch.hsr.geohash.GeoHash
-import com.github.tototoshi.csv.{CSVReader, CSVWriter}
+import com.github.tototoshi.csv.CSVReader
+import com.github.tototoshi.csv.CSVWriter.open
 import com.vividsolutions.jts.geom.{GeometryFactory, Polygon}
 import com.vividsolutions.jts.io.{WKTReader, WKTWriter}
 import io.github.adrianulbona.jts.discretizer.DiscretizerFactoryImpl
@@ -43,12 +44,11 @@ object CountryDiscretizer {
   }
 
   def main(args: Array[String]): Unit = {
+    val precision = 5
     write(read()
       .par
-      .filter(_.id.continent == "Europe")
-      .filter(_.id.name != "Russia")
-      .map(discretize(5)(_))
-      .toList)
+      .map(discretize(precision)(_))
+      .toList, precision)
   }
 
 
@@ -73,11 +73,17 @@ object CountryDiscretizer {
     CountryDiscretization(border.id, geoHashes)
   }
 
-  def write(discretizations: List[CountryDiscretization]): Unit = {
-    val writer = CSVWriter.open(new File("data/countries_discretized_wkt.csv"))
+  def write(discretizations: List[CountryDiscretization], precision: Int): Unit = {
+    val writerGeoHashes = open(new File(s"data/countries_discretized_$precision.csv"))
     try {
-      writer.writeAll(discretizations.map(_.toListWKT))
+      writerGeoHashes.writeAll(discretizations.map(_.toList))
     }
-    finally writer.close()
+    finally writerGeoHashes.close()
+
+    val writerWKT = open(new File(s"data/countries_discretized_${precision}_wkt.csv"))
+    try {
+      writerWKT.writeAll(discretizations.map(_.toListWKT))
+    }
+    finally writerWKT.close()
   }
 }
